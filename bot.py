@@ -315,7 +315,7 @@ def final(update: Update, context: CallbackContext):
 def main():
     updater = Updater(tg_bot_token)
 
-    dispatcher = updater.dispatcher
+    dp = updater.dispatcher
 
     dialog = ConversationHandler(
         entry_points=[MessageHandler(Filters.text, start)],
@@ -364,7 +364,7 @@ def main():
         fallbacks=[ConversationHandler.END]
     )
 
-    dispatcher.add_handler(dialog)
+    dp.add_handler(dialog)
 
     updater.start_polling()
 
