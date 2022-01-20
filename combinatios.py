@@ -65,12 +65,12 @@ q_12 = [['a12', 'Результативность'],
 #     Все ответы «c» соответствуют типу «Стратег»
 #     Все ответы «d» соответствуют типу «Коммуникатор»
 # 2. 10 -12 баллов (83 -100%) – ярко выраженный тип
-# 2. 7 – 9 баллов ( от 58%) – соответствует типу
+# 2. 7 – 9 баллов (от 58%) – соответствует типу
 # 3. 5 - 6 баллов (от 47%) – слабо выраженный тип
 # 4. 4 и ниже – не соответствует типу
 
 
-def get_a_type(answers: list) -> str:
+def get_a_type(answers: list):
     q_a = 0
     q_b = 0
     q_c = 0
@@ -86,12 +86,6 @@ def get_a_type(answers: list) -> str:
             pass
 
     q_d = 12 - q_a - q_b - q_c
-    l_a = f'Искатель на {round(q_a * 100 / 12)}%'
-    l_b = f'Созидатель на {round(q_b * 100 / 12)}%'
-    l_c = f'Стратег на {round(q_c * 100 / 12)}%'
-    l_d = f'Коммуникатор на {round(q_d * 100 / 12)}%'
-
-    text = l_a + l_b + l_c + l_d
     if 7 <= q_a <= 12:
         return 'Искатель'
     elif 7 <= q_b <= 12:
@@ -104,11 +98,15 @@ def get_a_type(answers: list) -> str:
         r = [('Искатель', q_a), ('Созидатель', q_b), ('Стратег', q_c), ('Коммуникатор', q_d)]
         r_tuples = sorted(r, key=lambda student: student[1])
 
-        text = f'{r_tuples[-1][0]} на {round(r_tuples[-1][1] * 100 / 12)}%\n' \
-               f'{r_tuples[-2][0]} на {round(r_tuples[-2][1] * 100 / 12)}%\n' \
-               f'{r_tuples[-3][0]} на {round(r_tuples[-3][1] * 100 / 12)}%\n' \
-               f'{r_tuples[-4][0]} на {round(r_tuples[-4][1] * 100 / 12)}%\n'
-        return text
+        text = f'{r_tuples[-1][0]} на {round(r_tuples[-1][1] * 100 / 12)}%, ' \
+               f'{r_tuples[-2][0]} на {round(r_tuples[-2][1] * 100 / 12)}%, ' \
+               f'{r_tuples[-3][0]} на {round(r_tuples[-3][1] * 100 / 12)}%, ' \
+               f'{r_tuples[-4][0]} на {round(r_tuples[-4][1] * 100 / 12)}%'
+        return text, \
+               round(r_tuples[-1][1] * 100 / 12), \
+               round(r_tuples[-2][1] * 100 / 12), \
+               round(r_tuples[-3][1] * 100 / 12), \
+               round(r_tuples[-4][1] * 100 / 12)
 
 
 def get_url_type(a_type: str):
@@ -122,6 +120,3 @@ def get_url_type(a_type: str):
         return 'https://marya-iskysnica.livejournal.com/5956773.html'
     else:
         return 'https://marya-iskysnica.livejournal.com/5956773.html'
-
-
-print(get_a_type(['b1', 'b2', 'c3', 'd4', 'd5', 'c6', 'b7', 'c8', 'c9', 'b10', 'd11', 'c12']))

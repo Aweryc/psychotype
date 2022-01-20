@@ -1,10 +1,13 @@
 import numpy as np
+from telegram.utils.helpers import escape_markdown
+
 from combinatios import *
 from config import tg_bot_token
 from conn import create_connection
 
 import sqlite3
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, InlineQueryResultArticle, Update, \
+    InputTextMessageContent, ParseMode
 from telegram.ext import (
     Updater,
     CommandHandler,
@@ -29,49 +32,65 @@ STEP_16, STEP_17, STEP_18, STEP_19, STEP_20, STEP_21 = range(20)
 
 
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text(f"Привет! Я проверяю наш персонал на психотип. 😎"
-                              f"Если еще не проходил тест, тогда самое время это сделать!"
-                              f""
-                              f"Для продолжения, нажми /begin")
+    try:
+        db = create_connection(sqlite3)
+        cursor = db.cursor()
+        sql = f"SELECT * FROM users_table WHERE chat_id = {update.message.chat.id}"
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        db.commit()
+        db.close()
+        if not result:
+            update.message.reply_text(f"Привет! Я проверяю наш персонал на психотип. 😎"
+                                      f"Если еще не проходил тест, тогда самое время это сделать!\n"
+                                      f"Для продолжения, нажми /begin")
+        else:
+            update.message.reply_text(f"Привет! Ты уже проходил тест.")
+
+    except sqlite3.Error as error:
+        print("Ошибка подключения", error)
+
     return ConversationHandler.END
 
 
 def name(update: Update, context: CallbackContext):
-    update.message.reply_text(f"Пришли свои имя и фамилию ( в таком порядке 😉 )."
+    update.message.reply_text(f"Пришли свои имя и фамилию.\n"
                               f"Например: Иван Смирнов")
     return STEP_3
 
 
 def age(update: Update, context: CallbackContext):
     context.user_data["name"] = update.message.text
-    update.message.reply_text(f"Сколько тебе лет?")
+    update.message.reply_text(f"Сколько тебе лет?\n"
+                              f"Например: 25")
 
     return STEP_4
 
 
 def city(update: Update, context: CallbackContext):
     context.user_data["age"] = update.message.text
-    update.message.reply_text(f"В каком городе проживаешь?")
+    update.message.reply_text(f"В каком городе проживаешь?\n"
+                              f"Например: Нижний Новгород")
 
     return STEP_5
 
 
 def social_link(update: Update, context: CallbackContext):
     context.user_data["city"] = update.message.text
-    update.message.reply_text(f"Скинь ссылку на личный аккаунт в соц.сетях 🙈")
-
+    update.message.reply_text(f"Скинь ссылку на личный аккаунт в соц.сетях 🙈\n"
+                              f"Например: vk .com/id00000000")
     return STEP_6
 
 
 def real_income(update: Update, context: CallbackContext):
     context.user_data["social_link"] = update.message.text
-    update.message.reply_text(f"Какой реальный доход сейчас у тебя?")
+    update.message.reply_text(f"Какой реальный доход сейчас у тебя (руб/мес)?")
     return STEP_7
 
 
 def wish_income(update: Update, context: CallbackContext):
     context.user_data["current_income"] = update.message.text
-    update.message.reply_text(f"Желаемый доход через 1 год?")
+    update.message.reply_text(f"Желаемый доход через 1 год (руб/мес)?")
     return STEP_8
 
 
@@ -88,7 +107,6 @@ def test_start(update: Update, context: CallbackContext):
                                                                resize_keyboard=True,
                                                                one_time_keyboard=True),
                               )
-
     return ConversationHandler.END
 
 
@@ -98,19 +116,31 @@ def q1(update: Update, context: CallbackContext):
     for row in shuffle_q1:
         answer_btns.append([InlineKeyboardButton(text=f'{row[1]}', callback_data=row[0])])
     inline_keyboad = InlineKeyboardMarkup(answer_btns)
-    update.message.reply_text(text="Что больше характеризует тебя?\n"
-                                   "Вопрос 1 из 12",
-                              reply_markup=inline_keyboad,
-                              parse_mode='HTML')
+    try:
+        db = create_connection(sqlite3)
+        cursor = db.cursor()
+        sql = f"SELECT * FROM users_table WHERE chat_id = {update.message.chat.id}"
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        db.commit()
+        db.close()
+        if not result:
+            update.message.reply_text(text="Что больше характеризует тебя?\n"
+                                           "Вопрос 1 из 12",
+                                      reply_markup=inline_keyboad,
+                                      parse_mode='HTML')
+            return STEP_10
+        else:
+            update.message.reply_text(f"Привет! Ты уже проходил тест.")
+        return ConversationHandler.END
 
-    return STEP_10
+    except sqlite3.Error as error:
+        print("Ошибка подключения", error)
 
 
 def q2(update: Update, context: CallbackContext):
     query = update.callback_query
-    chat_id = query.message.chat.id
     context.user_data["answer1"] = query.data
-
     shuffle_q2 = np.random.permutation(q_2)
     answer_btns = []
     for row in shuffle_q2:
@@ -121,15 +151,12 @@ def q2(update: Update, context: CallbackContext):
                                  "Вопрос 2 из 12",
                             reply_markup=inline_keyboad,
                             parse_mode='HTML')
-
     return STEP_11
 
 
 def q3(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer2"] = query.data
-
     shuffle_q3 = np.random.permutation(q_3)
     answer_btns = []
     for row in shuffle_q3:
@@ -140,15 +167,12 @@ def q3(update: Update, context: CallbackContext):
                                  "Вопрос 3 из 12",
                             reply_markup=inline_keyboad,
                             parse_mode='HTML')
-
     return STEP_12
 
 
 def q4(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer3"] = query.data
-
     shuffle_q4 = np.random.permutation(q_4)
     answer_btns = []
     for row in shuffle_q4:
@@ -159,15 +183,12 @@ def q4(update: Update, context: CallbackContext):
                                  "Вопрос 4 из 12",
                             reply_markup=inline_keyboad,
                             parse_mode='HTML')
-
     return STEP_13
 
 
 def q5(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer4"] = query.data
-
     shuffle_q5 = np.random.permutation(q_5)
     answer_btns = []
     for row in shuffle_q5:
@@ -183,9 +204,7 @@ def q5(update: Update, context: CallbackContext):
 
 def q6(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer5"] = query.data
-
     shuffle_q6 = np.random.permutation(q_6)
     answer_btns = []
     for row in shuffle_q6:
@@ -201,9 +220,7 @@ def q6(update: Update, context: CallbackContext):
 
 def q7(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer6"] = query.data
-
     shuffle_q7 = np.random.permutation(q_7)
     answer_btns = []
     for row in shuffle_q7:
@@ -219,9 +236,7 @@ def q7(update: Update, context: CallbackContext):
 
 def q8(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer7"] = query.data
-
     shuffle_q8 = np.random.permutation(q_8)
     answer_btns = []
     for row in shuffle_q8:
@@ -237,9 +252,7 @@ def q8(update: Update, context: CallbackContext):
 
 def q9(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer8"] = query.data
-
     shuffle_q9 = np.random.permutation(q_9)
     answer_btns = []
     for row in shuffle_q9:
@@ -255,9 +268,7 @@ def q9(update: Update, context: CallbackContext):
 
 def q10(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer9"] = query.data
-
     shuffle_q10 = np.random.permutation(q_10)
     answer_btns = []
     for row in shuffle_q10:
@@ -291,9 +302,7 @@ def q11(update: Update, context: CallbackContext):
 
 def q12(update: Update, context: CallbackContext):
     query = update.callback_query
-
     context.user_data["answer11"] = query.data
-
     shuffle_q12 = np.random.permutation(q_12)
     answer_btns = []
     for row in shuffle_q12:
@@ -308,10 +317,8 @@ def q12(update: Update, context: CallbackContext):
 
 
 def final(update: Update, context: CallbackContext):
-    print(update)
     query = update.callback_query
     chat_id = query.message.chat.id
-    print(chat_id)
     context.user_data["answer12"] = query.data
     desc_type = f''
     answers = [context.user_data['answer1'],
@@ -326,18 +333,18 @@ def final(update: Update, context: CallbackContext):
                context.user_data['answer10'],
                context.user_data['answer11'],
                context.user_data['answer12']]
-    # print(answers)
-    label_type = get_a_type(answers)
+
+    label_type,  a_score, b_score, c_score, d_score = get_a_type(answers)
     url_type = get_url_type(label_type)
-    # print(label_type)
-    # print(url_type)
     inline_keyboad = InlineKeyboardMarkup([[InlineKeyboardButton(text=f'Ссылка 🔗', url=url_type)]])
 
     try:
         db = create_connection(sqlite3)
         cursor = db.cursor()
-        sql = f"INSERT INTO users_table(chat_id, name, age, city, social_link, current_income, wish_income, answers)" \
-              f"VALUES(?,?,?,?,?,?,?,?)"
+        sql = f"INSERT INTO users_table(" \
+              f"chat_id, name, age, city, social_link, current_income, wish_income, answers," \
+              f"label_type, a_score, b_score, c_score, d_score)" \
+              f"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"
         cursor.execute(sql,
                        (chat_id,
                         context.user_data["name"],
@@ -346,7 +353,13 @@ def final(update: Update, context: CallbackContext):
                         context.user_data["social_link"],
                         context.user_data["current_income"],
                         context.user_data["wish_income"],
-                        str(answers),))
+                        str(answers),
+                        str(label_type),
+                        a_score,
+                        b_score,
+                        c_score,
+                        d_score
+                        ))
         db.commit()
         db.close()
     except sqlite3.Error as error:
@@ -363,6 +376,34 @@ def final(update: Update, context: CallbackContext):
                              parse_mode="HTML")
     query.answer()
     context.user_data.clear()
+    return ConversationHandler.END
+
+
+def profile_search(update: Update, context: CallbackContext) -> None:
+    query = update.inline_query.query
+    results = []
+    key_word = query.split(":")[1].strip()
+    try:
+        database = create_connection(sqlite3)
+        cursor_key = database.cursor()
+        sql_key = f'SELECT chat_id, name, age, city FROM users_table WHERE label_type = {key_word}'
+        cursor_key.execute(sql_key)
+        records = cursor_key.fetchall()
+
+        for row in records:
+            results.append(
+                InlineQueryResultArticle(id=row[1],
+                                         title=f"{row[3]}",
+                                         description=f"{key_word}: {row[1]}, {row[2]} лет, {row[3]}",
+                                         input_message_content=InputTextMessageContent(
+                                             f"_{escape_markdown(query)}_", parse_mode=ParseMode.MARKDOWN
+                                         ),
+                                         ),
+            )
+    except sqlite3.Error as error:
+        print("ПРОБЛЕМА С ЗАБОРОМ ТОВАРОВ НА СКЛАДЕ", error)
+
+    update.inline_query.answer(results)
     return ConversationHandler.END
 
 
@@ -385,6 +426,7 @@ def main():
     updater = Updater(tg_bot_token)
     dp = updater.dispatcher
 
+    dp.add_handler(InlineQueryHandler(profile_search, pattern='^' + str('.*Поиск:.*') + '$'))
     dp.add_handler(MessageHandler(Filters.regex('.*start.*'), start))
 
     dialog = ConversationHandler(
