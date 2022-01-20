@@ -386,8 +386,8 @@ def profile_search(update: Update, context: CallbackContext) -> None:
     try:
         database = create_connection(sqlite3)
         cursor_key = database.cursor()
-        sql_key = f'SELECT chat_id, name, age, city FROM users_table WHERE label_type = {key_word}'
-        cursor_key.execute(sql_key)
+        sql_key = f'SELECT chat_id, name, age, city FROM users_table WHERE label_type = ?'
+        cursor_key.execute(sql_key, (key_word,))
         records = cursor_key.fetchall()
 
         for row in records:
