@@ -1,8 +1,9 @@
 import numpy as np
+import gspread
 from telegram.utils.helpers import escape_markdown
 
 from combinatios import *
-from config import tg_bot_token
+from config import tg_bot_token, google_sheet_link
 from conn import create_connection
 
 import sqlite3
@@ -334,10 +335,30 @@ def final(update: Update, context: CallbackContext):
                context.user_data['answer11'],
                context.user_data['answer12']]
 
-    label_type,  a_score, b_score, c_score, d_score = get_a_type(answers)
+    label_type, a_score, b_score, c_score, d_score = get_a_type(answers)
     url_type = get_url_type(label_type)
     inline_keyboad = InlineKeyboardMarkup([[InlineKeyboardButton(text=f'Ссылка 🔗', url=url_type)]])
 
+    data = [chat_id,
+            context.user_data["name"],
+            context.user_data["age"],
+            context.user_data["city"],
+            context.user_data["social_link"],
+            context.user_data["current_income"],
+            context.user_data["wish_income"],
+            str(answers),
+            str(label_type),
+            a_score,
+            b_score,
+            c_score,
+            d_score]
+    try:
+        gc = gspread.service_account(filename='credentials.json')
+        sh = gc.open_by_key(google_sheet_link)
+        worksheet = sh.sheet1
+        worksheet.append_row(data)
+    except Exception as error:
+        print("Ошибка подключения гугл таблице", error)
     try:
         db = create_connection(sqlite3)
         cursor = db.cursor()
@@ -368,7 +389,6 @@ def final(update: Update, context: CallbackContext):
     query.message.delete()
     query.message.reply_text(text=f'Твой психотип: {label_type}\n'
                                   f'Немного о твоем типе:\n'
-    # f'{desc_type}'
                                   f'Кстати,можно перейди по ссылке ниже\n'
                                   f'для полной информации  👇',
                              reply_markup=inline_keyboad,
@@ -409,10 +429,6 @@ def profile_search(update: Update, context: CallbackContext) -> None:
 
 def dont_know(update: Update, context: CallbackContext):
     update.message.reply_text(text=f'<b>Извини, не понимаю тебя.</b>\n',
-                              # reply_markup=ReplyKeyboardMarkup(reply_keyboard,
-                              #                                  resize_keyboard=True,
-                              #                                  one_time_keyboard=True,
-                              #                                  ),
                               parse_mode="HTML")
     return ConversationHandler.END
 
