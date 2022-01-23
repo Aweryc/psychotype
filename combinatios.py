@@ -96,7 +96,9 @@ def get_a_type(answers: list):
         return 'Коммуникатор'
     else:
         r = [('Искатель', q_a), ('Созидатель', q_b), ('Стратег', q_c), ('Коммуникатор', q_d)]
-        r_tuples = sorted(r, key=lambda student: student[1])
+        r_tuples = sorted(r, key=lambda user: user[1])
+
+        main_label = str(r_tuples[-1][0]).lower()
 
         text = f'{r_tuples[-1][0]} на {round(r_tuples[-1][1] * 100 / 12)}%, ' \
                f'{r_tuples[-2][0]} на {round(r_tuples[-2][1] * 100 / 12)}%, ' \
@@ -106,7 +108,8 @@ def get_a_type(answers: list):
                round(r_tuples[-1][1] * 100 / 12), \
                round(r_tuples[-2][1] * 100 / 12), \
                round(r_tuples[-3][1] * 100 / 12), \
-               round(r_tuples[-4][1] * 100 / 12)
+               round(r_tuples[-4][1] * 100 / 12), \
+               main_label
 
 
 def get_url_type(a_type: str):

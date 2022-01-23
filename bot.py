@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import gspread
 from telegram.utils.helpers import escape_markdown
@@ -55,16 +57,30 @@ def start(update: Update, context: CallbackContext):
 
 
 def name(update: Update, context: CallbackContext):
-    update.message.reply_text(f"Пришли свои имя и фамилию.\n"
-                              f"Например: Иван Смирнов")
-    return STEP_3
+    try:
+        db = create_connection(sqlite3)
+        cursor = db.cursor()
+        sql = f"SELECT * FROM users_table WHERE chat_id = {update.message.chat.id}"
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        db.commit()
+        db.close()
+        if not result:
+            update.message.reply_text(f"Пришли свои имя и фамилию.\n"
+                                      f"Например: Иван Смирнов")
+            return STEP_3
+        else:
+            update.message.reply_text(f"Привет! Ты уже проходил тест.")
+            return ConversationHandler.END
+
+    except sqlite3.Error as error:
+        print("Ошибка подключения", error)
 
 
 def age(update: Update, context: CallbackContext):
     context.user_data["name"] = update.message.text
     update.message.reply_text(f"Сколько тебе лет?\n"
                               f"Например: 25")
-
     return STEP_4
 
 
@@ -72,7 +88,6 @@ def city(update: Update, context: CallbackContext):
     context.user_data["age"] = update.message.text
     update.message.reply_text(f"В каком городе проживаешь?\n"
                               f"Например: Нижний Новгород")
-
     return STEP_5
 
 
@@ -335,10 +350,10 @@ def final(update: Update, context: CallbackContext):
                context.user_data['answer11'],
                context.user_data['answer12']]
 
-    label_type, a_score, b_score, c_score, d_score = get_a_type(answers)
+    label_type, a_score, b_score, c_score, d_score, main_label = get_a_type(answers)
     url_type = get_url_type(label_type)
     inline_keyboad = InlineKeyboardMarkup([[InlineKeyboardButton(text=f'Ссылка 🔗', url=url_type)]])
-
+    date = round(time.time())
     data = [chat_id,
             context.user_data["name"],
             context.user_data["age"],
@@ -351,40 +366,41 @@ def final(update: Update, context: CallbackContext):
             a_score,
             b_score,
             c_score,
-            d_score]
+            d_score,
+            main_label,
+            date]
+    print(data)
     try:
         gc = gspread.service_account(filename='credentials.json')
         sh = gc.open_by_key(google_sheet_link)
         worksheet = sh.sheet1
         worksheet.append_row(data)
     except Exception as error:
-        print("Ошибка подключения гугл таблице", error)
+        print("Ошибка подключения Гугл таблице", error)
+
     try:
+
         db = create_connection(sqlite3)
         cursor = db.cursor()
         sql = f"INSERT INTO users_table(" \
               f"chat_id, name, age, city, social_link, current_income, wish_income, answers," \
-              f"label_type, a_score, b_score, c_score, d_score)" \
-              f"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"
-        cursor.execute(sql,
-                       (chat_id,
-                        context.user_data["name"],
-                        context.user_data["age"],
-                        context.user_data["city"],
-                        context.user_data["social_link"],
-                        context.user_data["current_income"],
-                        context.user_data["wish_income"],
-                        str(answers),
-                        str(label_type),
-                        a_score,
-                        b_score,
-                        c_score,
-                        d_score
-                        ))
+              f"label_type, a_score, b_score, c_score, d_score, main_label, date, active)" \
+              f"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        cursor.execute(sql, (chat_id,
+                             context.user_data["name"],
+                             context.user_data["age"],
+                             context.user_data["city"],
+                             context.user_data["social_link"],
+                             context.user_data["current_income"],
+                             context.user_data["wish_income"],
+                             str(answers), str(label_type), a_score, b_score, c_score, d_score, main_label,
+                             date, 1,
+                             )
+                       )
         db.commit()
         db.close()
     except sqlite3.Error as error:
-        print("Ошибка подключения", error)
+        print("Ошибка подключения Sqlite", error)
 
     query.message.delete()
     query.message.reply_text(text=f'Твой психотип: {label_type}\n'
@@ -402,28 +418,67 @@ def final(update: Update, context: CallbackContext):
 def profile_search(update: Update, context: CallbackContext) -> None:
     query = update.inline_query.query
     results = []
-    key_word = query.split(":")[1].strip()
+    key_word = query.split(":")[1].strip().lower()
     try:
         database = create_connection(sqlite3)
         cursor_key = database.cursor()
-        sql_key = f'SELECT chat_id, name, age, city FROM users_table WHERE label_type = ?'
+        sql_key = f'SELECT chat_id, name, age, city, social_link,' \
+                  f'current_income, wish_income, label_type FROM users_table WHERE main_label = ? AND active = 1'
         cursor_key.execute(sql_key, (key_word,))
         records = cursor_key.fetchall()
-
         for row in records:
+            keyboad = InlineKeyboardMarkup([
+                [InlineKeyboardButton(text=f'Отправить в архив', callback_data=f'archive.{row[0]}')],
+                [InlineKeyboardButton(text=f'Написать пользователю: Привет.', callback_data=f'dialog.{row[0]}')],
+            ])
             results.append(
-                InlineQueryResultArticle(id=row[1],
-                                         title=f"{row[3]}",
+                InlineQueryResultArticle(id=row[0],
+                                         title=f"{row[1]}",
                                          description=f"{key_word}: {row[1]}, {row[2]} лет, {row[3]}",
                                          input_message_content=InputTextMessageContent(
-                                             f"_{escape_markdown(query)}_", parse_mode=ParseMode.MARKDOWN
+                                             message_text=f"{key_word.upper()}\n\n"
+                                                          f"<b>Имя:</b> {row[1]}\n"
+                                                          f"<b>Возраст:</b> {row[2]}\n"
+                                                          f"<b>Город:</b> {row[3]}\n"
+                                                          f"<b>Ссылка на профиль:</b> {row[4]}\n"
+                                                          f"<b>Текущий доход:</b> {row[5]}\n"
+                                                          f"<b>Желаемый доход:</b> {row[6]}\n\n"
+                                                          f"<b>Результаты теста:</b> {row[7]}",
+                                             parse_mode="HTML"
                                          ),
+                                         reply_markup=keyboad,
                                          ),
             )
+        print(results)
     except sqlite3.Error as error:
         print("ПРОБЛЕМА С ЗАБОРОМ ТОВАРОВ НА СКЛАДЕ", error)
 
     update.inline_query.answer(results)
+    return ConversationHandler.END
+
+
+def get_a_user(update: Update, context: CallbackContext):
+    query = update.callback_query
+    current_user_id = query.from_user.id
+    user_id = query.data.split('.')[1]
+    if 'archive' in query.data:
+
+        try:
+            db = create_connection(sqlite3)
+            cursor = db.cursor()
+            sql1 = f"UPDATE users_table SET active = 0 WHERE chat_id = ? "
+            cursor.execute(sql1, (user_id,))
+            db.commit()
+            db.close()
+        except sqlite3.Error as error:
+            print("Ошибка подключения 1", error)
+
+        context.bot.send_message(chat_id=current_user_id, text=f'Запись о пользователе отправлена в архив.\n'
+                                                               f'Теперь она доступна только в Google Таблицах',
+                                 parse_mode="HTML")
+    else:
+        context.bot.send_message(chat_id=user_id, text='Привет.')
+    query.answer()
     return ConversationHandler.END
 
 
@@ -441,7 +496,7 @@ def error(update: Update, context):
 def main():
     updater = Updater(tg_bot_token)
     dp = updater.dispatcher
-
+    dp.add_handler(CallbackQueryHandler(get_a_user, pattern='^' + str('.*archive.*|.*dialog.*') + '$'))
     dp.add_handler(InlineQueryHandler(profile_search, pattern='^' + str('.*Поиск:.*') + '$'))
     dp.add_handler(MessageHandler(Filters.regex('.*start.*'), start))
 
@@ -477,7 +532,8 @@ def main():
     dp.add_handler(dialog)
     dp.add_handler(dialog2)
 
-    dp.add_handler(MessageHandler(Filters.text, dont_know))
+    if_not_via = '(?!^ИСКАТЕЛЬ|СОЗИДАТЕЛЬ|СТРАТЕГ|КОММУНИКАТОР)(^.*$)'
+    dp.add_handler(MessageHandler(Filters.regex(if_not_via), dont_know))
 
     dp.add_error_handler(error)
     updater.start_polling()
