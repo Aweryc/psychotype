@@ -1,9 +1,12 @@
 import time
+from datetime import datetime
+import os
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import numpy as np
 import gspread
-from telegram.utils.helpers import escape_markdown
 
+from additional_functios import clean_users
 from combinatios import *
 from config import tg_bot_token, google_sheet_link
 from conn import create_connection
@@ -369,7 +372,7 @@ def final(update: Update, context: CallbackContext):
             d_score,
             main_label,
             date]
-    print(data)
+
     try:
         gc = gspread.service_account(filename='credentials.json')
         sh = gc.open_by_key(google_sheet_link)
@@ -449,7 +452,6 @@ def profile_search(update: Update, context: CallbackContext) -> None:
                                          reply_markup=keyboad,
                                          ),
             )
-        print(results)
     except sqlite3.Error as error:
         print("ПРОБЛЕМА С ЗАБОРОМ ТОВАРОВ НА СКЛАДЕ", error)
 
@@ -494,6 +496,11 @@ def error(update: Update, context):
 
 
 def main():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(clean_users, 'interval', days=7)
+    scheduler.start()
+    print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
+
     updater = Updater(tg_bot_token)
     dp = updater.dispatcher
     dp.add_handler(CallbackQueryHandler(get_a_user, pattern='^' + str('.*archive.*|.*dialog.*') + '$'))
