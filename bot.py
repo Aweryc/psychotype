@@ -6,7 +6,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import numpy as np
 import gspread
 
-from additional_functios import clean_users
+from additional_functions import clean_users
 from combinatios import *
 from config import tg_bot_token, google_sheet_link
 from conn import create_connection
