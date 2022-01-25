@@ -22,7 +22,7 @@ def clean_users():
             if now < row[1] + a_year:
                 pass
             else:
-                n +=1
+                n += 1
                 db = create_connection(sqlite3)
                 cursor = db.cursor()
                 sql1 = f"UPDATE users_table SET active = 0 WHERE chat_id = ? "

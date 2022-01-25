@@ -374,7 +374,7 @@ def final(update: Update, context: CallbackContext):
             date]
 
     try:
-        gc = gspread.service_account(filename='credentials.json')
+        gc = gspread.service_account(filename='credentials_polbza.json')
         sh = gc.open_by_key(google_sheet_link)
         worksheet = sh.sheet1
         worksheet.append_row(data)
