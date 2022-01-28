@@ -354,8 +354,8 @@ def final(update: Update, context: CallbackContext):
                context.user_data['answer12']]
 
     label_type, a_score, b_score, c_score, d_score, main_label = get_a_type(answers)
-    url_type = get_url_type(label_type)
-    inline_keyboad = InlineKeyboardMarkup([[InlineKeyboardButton(text=f'Ссылка 🔗', url=url_type)]])
+    # url_type = get_url_type(label_type)
+    # inline_keyboad = InlineKeyboardMarkup([[InlineKeyboardButton(text=f'Ссылка 🔗', url=url_type)]])
     date = round(time.time())
     data = [chat_id,
             context.user_data["name"],
@@ -406,11 +406,8 @@ def final(update: Update, context: CallbackContext):
         print("Ошибка подключения Sqlite", error)
 
     query.message.delete()
-    query.message.reply_text(text=f'Твой психотип: {label_type}\n'
-                                  f'Немного о твоем типе:\n'
-                                  f'Кстати,можно перейди по ссылке ниже\n'
-                                  f'для полной информации  👇',
-                             reply_markup=inline_keyboad,
+    query.message.reply_text(text=f'Твой психотип: {label_type}\n',
+                             # reply_markup=inline_keyboad,
 
                              parse_mode="HTML")
     query.answer()

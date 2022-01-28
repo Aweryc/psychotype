@@ -100,10 +100,8 @@ def get_a_type(answers: list):
 
         main_label = str(r_tuples[-1][0]).lower()
 
-        text = f'{r_tuples[-1][0]} на {round(r_tuples[-1][1] * 100 / 12)}%, ' \
-               f'{r_tuples[-2][0]} на {round(r_tuples[-2][1] * 100 / 12)}%, ' \
-               f'{r_tuples[-3][0]} на {round(r_tuples[-3][1] * 100 / 12)}%, ' \
-               f'{r_tuples[-4][0]} на {round(r_tuples[-4][1] * 100 / 12)}%'
+        text = f'{r_tuples[-1][0]} на {round(r_tuples[-1][1] * 100 / 12)}%'
+
         return text, \
                round(r_tuples[-1][1] * 100 / 12), \
                round(r_tuples[-2][1] * 100 / 12), \
