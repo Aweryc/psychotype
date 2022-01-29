@@ -339,7 +339,6 @@ def final(update: Update, context: CallbackContext):
     query = update.callback_query
     chat_id = query.message.chat.id
     context.user_data["answer12"] = query.data
-    desc_type = f''
     answers = [context.user_data['answer1'],
                context.user_data['answer2'],
                context.user_data['answer3'],
@@ -356,7 +355,8 @@ def final(update: Update, context: CallbackContext):
     label_type, a_score, b_score, c_score, d_score, main_label = get_a_type(answers)
     # url_type = get_url_type(label_type)
     # inline_keyboad = InlineKeyboardMarkup([[InlineKeyboardButton(text=f'Ссылка 🔗', url=url_type)]])
-    date = round(time.time())
+    ts = time.localtime()
+    date = time.strftime("%d.%m.%y %H:%M", ts)  # 29.01.22 10:40
     data = [chat_id,
             context.user_data["name"],
             context.user_data["age"],
@@ -426,29 +426,38 @@ def profile_search(update: Update, context: CallbackContext) -> None:
                   f'current_income, wish_income, label_type FROM users_table WHERE main_label = ? AND active = 1'
         cursor_key.execute(sql_key, (key_word,))
         records = cursor_key.fetchall()
-        for row in records:
-            keyboad = InlineKeyboardMarkup([
-                [InlineKeyboardButton(text=f'Отправить в архив', callback_data=f'archive.{row[0]}')],
-                [InlineKeyboardButton(text=f'Написать пользователю: Привет.', callback_data=f'dialog.{row[0]}')],
-            ])
-            results.append(
-                InlineQueryResultArticle(id=row[0],
-                                         title=f"{row[1]}",
-                                         description=f"{key_word}: {row[1]}, {row[2]} лет, {row[3]}",
-                                         input_message_content=InputTextMessageContent(
-                                             message_text=f"{key_word.upper()}\n\n"
-                                                          f"<b>Имя:</b> {row[1]}\n"
-                                                          f"<b>Возраст:</b> {row[2]}\n"
-                                                          f"<b>Город:</b> {row[3]}\n"
-                                                          f"<b>Ссылка на профиль:</b> {row[4]}\n"
-                                                          f"<b>Текущий доход:</b> {row[5]}\n"
-                                                          f"<b>Желаемый доход:</b> {row[6]}\n\n"
-                                                          f"<b>Результаты теста:</b> {row[7]}",
-                                             parse_mode="HTML"
-                                         ),
-                                         reply_markup=keyboad,
-                                         ),
-            )
+        if records:
+            for row in records:
+                keyboad = InlineKeyboardMarkup([
+                    [InlineKeyboardButton(text=f'Отправить в архив', callback_data=f'archive.{row[0]}')],
+                    [InlineKeyboardButton(text=f'Написать пользователю: Привет.', callback_data=f'dialog.{row[0]}')],
+                ])
+                results.append(
+                    InlineQueryResultArticle(id=row[0],
+                                             title=f"{row[1]}",
+                                             description=f"{key_word}: {row[1]}, {row[2]} лет, {row[3]}",
+                                             input_message_content=InputTextMessageContent(
+                                                 message_text=f"{key_word.upper()}\n\n"
+                                                              f"<b>Имя:</b> {row[1]}\n"
+                                                              f"<b>Возраст:</b> {row[2]}\n"
+                                                              f"<b>Город:</b> {row[3]}\n"
+                                                              f"<b>Ссылка на профиль:</b> {row[4]}\n"
+                                                              f"<b>Текущий доход:</b> {row[5]}\n"
+                                                              f"<b>Желаемый доход:</b> {row[6]}\n\n"
+                                                              f"<b>Результаты теста:</b> {row[7]}",
+                                                 parse_mode="HTML"
+                                             ),
+                                             reply_markup=keyboad,
+                                             ),
+                )
+        else:
+            results = [InlineQueryResultArticle(id='None',
+                                                title=f"{key_word}",
+                                                description='Ничего не найдено',
+                                                input_message_content=InputTextMessageContent(
+                                                                        message_text=f"Ничего не найдено")
+                                                )
+                       ]
     except sqlite3.Error as error:
         print("ПРОБЛЕМА С ЗАБОРОМ ТОВАРОВ НА СКЛАДЕ", error)
 
@@ -536,7 +545,7 @@ def main():
     dp.add_handler(dialog)
     dp.add_handler(dialog2)
 
-    if_not_via = '(?!^ИСКАТЕЛЬ|СОЗИДАТЕЛЬ|СТРАТЕГ|КОММУНИКАТОР)(^.*$)'
+    if_not_via = '(?!^ИСКАТЕЛЬ|СОЗИДАТЕЛЬ|СТРАТЕГ|КОММУНИКАТОР|Ничего не найдено)(^.*$)'
     dp.add_handler(MessageHandler(Filters.regex(if_not_via), dont_know))
 
     dp.add_error_handler(error)
