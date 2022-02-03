@@ -20,7 +20,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     ConversationHandler,
     InlineQueryHandler,
-    CallbackContext,
+    CallbackContext, CommandHandler,
 )
 import logging
 
@@ -31,11 +31,31 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-STEP_3, STEP_4, STEP_5, STEP_6, STEP_7, STEP_8 = range(6)
-STEP_10, STEP_11, STEP_12, STEP_13, STEP_14, STEP_15, STEP_16, STEP_17, STEP_18, STEP_19, STEP_20, STEP_21, GET_SOCIAL_LINK = range(13)
+STEP_3 = 1
+STEP_4 = 2
+STEP_5 = 3
+STEP_6 = 4
+STEP_7 = 5
+STEP_8 = 6
+
+STEP_10 = 1
+STEP_11 = 2
+STEP_12 = 3
+STEP_13 = 4
+STEP_14 = 5
+STEP_15 = 6
+STEP_16 = 7
+STEP_17 = 8
+STEP_18 = 9
+STEP_19 = 10
+STEP_20 = 11
+STEP_21 = 12
+GET_SOCIAL_LINK = 13
 
 
 def start(update: Update, context: CallbackContext):
+    context.user_data.clear()
+
     reply_keys = [['Старт']]
     try:
         db = create_connection(sqlite3)
@@ -46,16 +66,15 @@ def start(update: Update, context: CallbackContext):
         db.commit()
         db.close()
         if not result:
-            update.message.reply_text(text=f"Привет! Я Психобот.\n"
-                                           f"Я помогу тебе пройти тест на психотипы.\n"
-                                           f"Тест определит твой психотип и роль в профессиональной команде,\n"
-                                           f"которая лучше всего сочетается с твоими личными качествами и интересами.\n"
-                                           f"Также он укажет, какие навыки и качества тебе необходимо развивать,\n"
-                                           f"чтобы достигнуть заветных карьерных целей.\n\n"
-                                           f"Чтобы начать тест, нажми кнопку “Старт”",
+            update.message.reply_text(text=f"Привет! Я Психобот.\n\n"
+                                           f"Я помогу тебе пройти <b>тест на психотип</b>.\n"
+                                           f"Я определю твой психотип и роль в профессиональной команде, которая лучше всего сочетается с твоими личными качествами и интересами. "
+                                           f"Также я подскажу, какие навыки и качества тебе необходимо развивать, чтобы достигнуть заветных карьерных целей. \n\n"
+                                           f"<i>Чтобы начать тест, нажми кнопку “Старт”</i>",
                                       reply_markup=ReplyKeyboardMarkup(reply_keys,
                                                                        resize_keyboard=True,
                                                                        one_time_keyboard=True),
+                                      parse_mode="HTML"
                                       )
         else:
             update.message.reply_text(f"Привет! Ты уже проходил тест.")
@@ -76,13 +95,16 @@ def name(update: Update, context: CallbackContext):
         db.commit()
         db.close()
         if not result:
-            update.message.reply_text(f"В первой части теста я задам несколько личных вопросов:\n"
-                                      f"про твое имя, возраст, город проживания и т.д.\n"
-                                      f"Все это - твои персональные данные.\n"
-                                      f"Я очень ценю, что ты доверишь их мне\n"
-                                      f"и обязуюсь не передавать их третьим лицам.\n\n"
+            update.message.reply_text(
+                f"В первой части теста я задам несколько личных вопросов: <i>имя, возраст, город проживания и т.д.</i>\n\n"
+                f"Все это - твои персональные данные. Я очень ценю, что ты доверишь их мне и обязуюсь не передавать их третьим лицам.\n\n",
+                parse_mode="HTML")
+
+            update.message.reply_text(f"<i>Начнем!</i>\n"
                                       f"Как тебя зовут? Мне достаточно имени.\n"
-                                      f"Например: Иван")
+                                      f"<i>Например: Иван</i>",
+                                      parse_mode="HTML"
+                                      )
             return STEP_3
         else:
             update.message.reply_text(f"Привет! Ты уже проходил тест.")
@@ -94,15 +116,17 @@ def name(update: Update, context: CallbackContext):
 
 def age(update: Update, context: CallbackContext):
     context.user_data["name"] = update.message.text
-    update.message.reply_text(f"Сколько тебе лет?\n"
-                              f"Например: 25")
+    update.message.reply_text(f"<b>Сколько тебе лет?</b>\n"
+                              f"<i>Например: 25</i>",
+                              parse_mode="HTML")
     return STEP_4
 
 
 def city(update: Update, context: CallbackContext):
     context.user_data["age"] = update.message.text
-    update.message.reply_text(f"В каком городе живешь?\n"
-                              f"Например: Нижний Новгород")
+    update.message.reply_text(f"<b>В каком городе живешь?</b>\n"
+                              f"<i>Например: Санкт-Петербург</i>",
+                              parse_mode="HTML")
     return STEP_5
 
 
@@ -115,7 +139,7 @@ def social_link(update: Update, context: CallbackContext):
                    [InlineKeyboardButton(text='Никакой', callback_data='Никакой')]
                    ]
     inline_keyboad = InlineKeyboardMarkup(answer_btns)
-    update.message.reply_text(f"Какой социальной сетью ты пользуешься чаще всего?\n",
+    update.message.reply_text(f"<b>Какой социальной сетью ты пользуешься чаще всего?</b>\n",
                               reply_markup=inline_keyboad,
                               parse_mode='HTML')
     return STEP_6
@@ -124,14 +148,15 @@ def social_link(update: Update, context: CallbackContext):
 def real_income(update: Update, context: CallbackContext):
     query = update.callback_query
     context.user_data["social_net"] = query.data
-    answer_btns = [[InlineKeyboardButton(text='меньше 100.000 руб.', callback_data='меньше 100.000 руб.'),
-                    InlineKeyboardButton(text='101.000 - 200.000 руб.', callback_data='101.000 - 200.000 руб.')],
-                   [InlineKeyboardButton(text='Больше 200.000 руб.', callback_data='Больше 200.000 руб.'),
-                    InlineKeyboardButton(text='Не хочу говорить', callback_data='Не хочу говорить')]
-                   ]
+    answer_btns = [
+        [InlineKeyboardButton(text='меньше 100 т.р', callback_data='меньше 100.000 руб.')],
+        [InlineKeyboardButton(text='101 т.р - 200 т.р', callback_data='101.000 - 200.000 руб.')],
+        [InlineKeyboardButton(text='Больше 200 т.р', callback_data='Больше 200.000 руб.')],
+        [InlineKeyboardButton(text='Не хочу говорить 🤭', callback_data='Не хочу говорить')]
+    ]
     inline_keyboad = InlineKeyboardMarkup(answer_btns)
 
-    query.message.edit_text(f"Какой реальный доход сейчас у тебя (руб/мес)?",
+    query.message.edit_text(f"<b>Какой твой текущий доход(руб/мес)?</b>",
                             reply_markup=inline_keyboad,
                             parse_mode='HTML')
     query.answer()
@@ -141,13 +166,14 @@ def real_income(update: Update, context: CallbackContext):
 def wish_income(update: Update, context: CallbackContext):
     query = update.callback_query
     context.user_data["current_income"] = query.data
-    answer_btns = [[InlineKeyboardButton(text='больше 100.000 руб.', callback_data='больше 100.000 руб.')],
-                   [InlineKeyboardButton(text='больше 200.000руб.', callback_data='больше 200.000 руб.')],
+    answer_btns = [[InlineKeyboardButton(text='больше 100 т.р', callback_data='больше 100.000 руб.')],
+                   [InlineKeyboardButton(text='больше 200 т.р', callback_data='больше 200.000 руб.')],
                    ]
     inline_keyboad = InlineKeyboardMarkup(answer_btns)
-    query.message.edit_text(f"Желаемый доход через 1 год (руб/мес)?\n"
-                            f"Свой вариант можешь написать мне в сообщении.",
+    query.message.edit_text(f"<b>Какой твой желаемый доход через 1 год? </b>\n"
+                            f"<i>Ты также можешь написать свой вариант мне в сообщении, если ни один из предложенных вариантов ответа не подходит.</i>",
                             reply_markup=inline_keyboad,
+                            parse_mode="HTML"
                             )
     query.answer()
     return STEP_8
@@ -155,20 +181,13 @@ def wish_income(update: Update, context: CallbackContext):
 
 def test_start(update: Update, context: CallbackContext):
     reply_key = [["Поехали"]]
-    mes_text = f"Теперь мы перейдем к основной части теста.\n" \
-               f"Тебе будет предложено 12 блоков.\n" \
-               f"В каждом блоке содержится 4 качества личности.\n" \
-               f"Выбери то качество, которое наиболее точно характеризует тебя.\n\n" \
-               f"В некоторых блоках тебе покажется, что подходят 2 и более вариантов ответа.\n" \
-               f"Это нормально.\n" \
-               f"Каждый из нас обладает многогранным характером.\n\n" \
+    mes_text = f"<b>Теперь мы перейдем к основной части теста.</b>\n\n" \
+               f"Тебе будет предложено 12 блоков. В каждом блоке содержится 4 качества личности. Выбери то качество, которое наиболее точно характеризует тебя.\n\n" \
+               f"В некоторых блоках тебе покажется, что подходят 2 и более вариантов ответа. Это нормально. Каждый из нас обладает многогранным характером. \n" \
                f"У меня есть подсказка, как выбрать правильный ответ:\n" \
-               f"1. Отвечай быстро.\n" \
-               f"Выбирай тот ответ, который откликнулся тебе сильней всего.\n" \
-               f"2. Отвечай честно.\n" \
-               f"Это не всегда просто, но полезно: только так ты узнаешь сильные и\n" \
-               f"слабые стороны своей личности.\n\n" \
-               f"Для продолжения нажми 'Поехали!' внизу 👇"
+               f"1. Отвечай быстро. Выбирай тот ответ, который откликнулся тебе сильней всего.\n" \
+               f"2. Отвечай честно. Это не всегда просто, но полезно: только так ты узнаешь сильные и слабые стороны своей личности.\n\n" \
+               f"<i>Для продолжения нажми </i><b>'Поехали!'</b> <i>внизу</i> 👇"
 
     if update.callback_query:
         query = update.callback_query
@@ -178,6 +197,7 @@ def test_start(update: Update, context: CallbackContext):
                                  reply_markup=ReplyKeyboardMarkup(reply_key,
                                                                   resize_keyboard=True,
                                                                   one_time_keyboard=True),
+                                 parse_mode="HTML"
                                  )
         query.answer()
     else:
@@ -186,6 +206,7 @@ def test_start(update: Update, context: CallbackContext):
                                   reply_markup=ReplyKeyboardMarkup(reply_key,
                                                                    resize_keyboard=True,
                                                                    one_time_keyboard=True),
+                                  parse_mode="HTML"
                                   )
     return ConversationHandler.END
 
@@ -324,7 +345,7 @@ def q8(update: Update, context: CallbackContext):
 
     inline_keyboad = InlineKeyboardMarkup(answer_btns)
     query.message.edit_text(text="Выбери качество, которое наиболее точно характеризует тебя:\n"
-                                 "Вопрос 7 из 12",
+                                 "Вопрос 8 из 12",
                             reply_markup=inline_keyboad,
                             parse_mode='HTML')
     return STEP_17
@@ -418,16 +439,15 @@ def final(update: Update, context: CallbackContext):
 
     query.message.reply_text(text=get_desc_type(main_label),
                              parse_mode="HTML")
-    query.message.reply_text(text='Пришли ссылку на твою соц. сеть',
+    query.message.reply_text(text='<i>Пришли ссылку на твою соц. сеть </i>🔗',
                              parse_mode="HTML")
     query.answer()
-
     return GET_SOCIAL_LINK
 
 
 def get_social_link(update: Update, context: CallbackContext) -> None:
     context.user_data["social_link"] = update.message.text
-    update.message.reply_text(text='Спасибо!',
+    update.message.reply_text(text='Спасибо! Если тебе понравился тест, расскажи обо мне друзьям и коллегам ;)',
                               parse_mode="HTML")
     chat_id = update.message.chat.id
     answers = [context.user_data['answer1'],
@@ -586,51 +606,88 @@ def error(update: Update, context):
     logging.error(f'Апдейт {update}, причина ошибки {context.error}')
 
 
+def cancel(update: Update, context: CallbackContext) -> int:
+    context.user_data.clear()
+    return start(update, context)
+
+
 def main():
     scheduler = BackgroundScheduler()
     scheduler.add_job(clean_users, 'interval', days=7)
     scheduler.start()
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
+    if_not_start_str = '(?!^Старт)(^.*$)'
+    if_start_str = '^(Старт)$'
+
     updater = Updater(tg_bot_token)
     dp = updater.dispatcher
     dp.add_handler(CallbackQueryHandler(get_a_user, pattern='^' + str('.*archive.*|.*dialog.*') + '$'))
     dp.add_handler(InlineQueryHandler(profile_search, pattern='^' + str('.*Поиск:.*') + '$'))
-    dp.add_handler(MessageHandler(Filters.regex('.*start.*'), start))
 
     dialog = ConversationHandler(
         entry_points=[MessageHandler(Filters.regex('.*Старт.*'), name)],
-        states={STEP_3: [MessageHandler(Filters.text, age)],
-                STEP_4: [MessageHandler(Filters.text, city)],
-                STEP_5: [MessageHandler(Filters.text, social_link)],
-                STEP_6: [CallbackQueryHandler(real_income)],
-                STEP_7: [CallbackQueryHandler(wish_income)],
-                STEP_8: [MessageHandler(Filters.text, test_start),
+        states={STEP_3: [CommandHandler('start', cancel),MessageHandler(Filters.regex(if_not_start_str), age),
+                         ],
+                STEP_4: [CommandHandler('start', cancel),MessageHandler(Filters.regex(if_not_start_str), city),
+
+                         ],
+                STEP_5: [CommandHandler('start', cancel),MessageHandler(Filters.regex(if_not_start_str), social_link),
+
+                         ],
+                STEP_6: [CommandHandler('start', cancel),
+                         CallbackQueryHandler(real_income)],
+                STEP_7: [CommandHandler('start', cancel),
+                         CallbackQueryHandler(wish_income)],
+                STEP_8: [CommandHandler('start', cancel),MessageHandler(Filters.regex(if_not_start_str), test_start),
                          CallbackQueryHandler(test_start)]
                 },
-        fallbacks=[ConversationHandler.END]
+        fallbacks=[CommandHandler('start', cancel),
+                   ConversationHandler.END]
     )
+
+    dp.add_handler(dialog)
 
     dialog2 = ConversationHandler(
         entry_points=[MessageHandler(Filters.regex('.*Поехали.*'), q1)],
-        states={STEP_10: [CallbackQueryHandler(q2, pattern='^' + str('.*a1.*|.*b1.*|.*c1.*|.*d1.*') + '$')],
-                STEP_11: [CallbackQueryHandler(q3, pattern='^' + str('.*a2.*|.*b2.*|.*c2.*|.*d2.*') + '$')],
-                STEP_12: [CallbackQueryHandler(q4, pattern='^' + str('.*a3.*|.*b3.*|.*c3.*|.*d3.*') + '$')],
-                STEP_13: [CallbackQueryHandler(q5, pattern='^' + str('.*a4.*|.*b4.*|.*c4.*|.*d4.*') + '$')],
-                STEP_14: [CallbackQueryHandler(q6, pattern='^' + str('.*a5.*|.*b5.*|.*c5.*|.*d5.*') + '$')],
-                STEP_15: [CallbackQueryHandler(q7, pattern='^' + str('.*a6.*|.*b6.*|.*c6.*|.*d6.*') + '$')],
-                STEP_16: [CallbackQueryHandler(q8, pattern='^' + str('.*a7.*|.*b7.*|.*c7.*|.*d7.*') + '$')],
-                STEP_17: [CallbackQueryHandler(q9, pattern='^' + str('.*a8.*|.*b8.*|.*c8.*|.*d8.*') + '$')],
-                STEP_18: [CallbackQueryHandler(q10, pattern='^' + str('.*a9.*|.*b9.*|.*c9.*|.*d9.*') + '$')],
-                STEP_19: [CallbackQueryHandler(q11, pattern='^' + str('.*a10.*|.*b10.*|.*c10.*|.*d10.*') + '$')],
-                STEP_20: [CallbackQueryHandler(q12, pattern='^' + str('.*a11.*|.*b11.*|.*c11.*|.*d11.*') + '$')],
-                STEP_21: [CallbackQueryHandler(final, pattern='^' + str('.*a12.*|.*b12.*|.*c12.*|.*d12.*') + '$')],
-                GET_SOCIAL_LINK: [MessageHandler(Filters.text, get_social_link)],
+        states={STEP_10: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q2, pattern='^' + str('.*a1.*|.*b1.*|.*c1.*|.*d1.*') + '$')],
+                STEP_11: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q3, pattern='^' + str('.*a2.*|.*b2.*|.*c2.*|.*d2.*') + '$')],
+                STEP_12: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q4, pattern='^' + str('.*a3.*|.*b3.*|.*c3.*|.*d3.*') + '$')],
+                STEP_13: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q5, pattern='^' + str('.*a4.*|.*b4.*|.*c4.*|.*d4.*') + '$')],
+                STEP_14: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q6, pattern='^' + str('.*a5.*|.*b5.*|.*c5.*|.*d5.*') + '$')],
+                STEP_15: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q7, pattern='^' + str('.*a6.*|.*b6.*|.*c6.*|.*d6.*') + '$')],
+                STEP_16: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q8, pattern='^' + str('.*a7.*|.*b7.*|.*c7.*|.*d7.*') + '$')],
+                STEP_17: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q9, pattern='^' + str('.*a8.*|.*b8.*|.*c8.*|.*d8.*') + '$')],
+                STEP_18: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q10, pattern='^' + str('.*a9.*|.*b9.*|.*c9.*|.*d9.*') + '$')],
+                STEP_19: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q11, pattern='^' + str('.*a10.*|.*b10.*|.*c10.*|.*d10.*') + '$')],
+                STEP_20: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(q12, pattern='^' + str('.*a11.*|.*b11.*|.*c11.*|.*d11.*') + '$')],
+                STEP_21: [CommandHandler('start', cancel),
+                          CallbackQueryHandler(final, pattern='^' + str('.*a12.*|.*b12.*|.*c12.*|.*d12.*') + '$')],
+                GET_SOCIAL_LINK: [CommandHandler('start', cancel),
+                                  MessageHandler(Filters.regex(if_not_start_str), get_social_link),
+                                  ],
                 },
-        fallbacks=[ConversationHandler.END]
+        fallbacks=[CommandHandler('start', cancel),
+                   ConversationHandler.END],
+        map_to_parent={
+            ConversationHandler.END: ConversationHandler.END,
+        },
     )
-    dp.add_handler(dialog)
+
     dp.add_handler(dialog2)
+
+    dp.add_handler(MessageHandler(Filters.regex('.*start.*'), start))
 
     if_not_via = '(?!^ИСКАТЕЛЬ|СОЗИДАТЕЛЬ|СТРАТЕГ|КОММУНИКАТОР|Ничего не найдено)(^.*$)'
     dp.add_handler(MessageHandler(Filters.regex(if_not_via), dont_know))
